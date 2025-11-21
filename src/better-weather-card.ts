@@ -86,15 +86,18 @@ export class BetterWeatherCard extends LitElement {
 
   private async _fetchForecast(): Promise<void> {
     if (!this.hass || !this.config.entity) {
+      console.log('Forecast fetch skipped: no hass or entity');
       return;
     }
 
     const forecastType = this.config.forecast_type || 'daily';
+    console.log('Fetching forecast:', { entity: this.config.entity, type: forecastType });
 
     try {
       // Try to get forecast from attributes first (old method, before 2023.9)
       const weather = this.weatherEntity;
       if (weather?.attributes?.forecast) {
+        console.log('Found forecast in attributes');
         this._forecast = weather.attributes.forecast;
         this.requestUpdate();
         return;
@@ -123,13 +126,14 @@ export class BetterWeatherCard extends LitElement {
         if (result) {
           const forecasts = (result as any).forecast_data;
           if (forecasts && forecasts[this.config.entity]?.forecast) {
+            console.log('Found forecast via execute_script');
             this._forecast = forecasts[this.config.entity].forecast;
             this.requestUpdate();
             return;
           }
         }
       } catch (wsError: any) {
-        // WS method failed, try direct service call
+        console.log('execute_script method failed');
       }
 
       // Try direct service call approach
@@ -148,6 +152,8 @@ export class BetterWeatherCard extends LitElement {
           return_response: true,
         });
 
+        console.log('Service call response:', serviceData);
+
         if (serviceData && typeof serviceData === 'object') {
           const data = serviceData as any;
 
@@ -157,13 +163,16 @@ export class BetterWeatherCard extends LitElement {
                                  data[this.config.entity]?.forecast;
 
           if (entityForecast && Array.isArray(entityForecast)) {
+            console.log('Found forecast via service call, length:', entityForecast.length);
             this._forecast = entityForecast;
             this.requestUpdate();
             return;
+          } else {
+            console.log('No forecast found in service response');
           }
         }
       } catch (serviceError: any) {
-        // Service call failed, try fallback methods
+        console.log('Service call failed:', serviceError);
       }
 
       // Fallback: Check for separate hourly/daily forecast attributes
@@ -261,6 +270,16 @@ export class BetterWeatherCard extends LitElement {
     const isCompact = this.config.layout === 'compact';
 
     const forecast = this._forecast.slice(0, this.config.forecast_days || 5);
+
+    // Debug logging
+    if (this.config.show_forecast && forecast.length === 0) {
+      console.log('Forecast debug:', {
+        configEntity: this.config.entity,
+        forecastLength: this._forecast.length,
+        forecastType: this.config.forecast_type,
+        showForecast: this.config.show_forecast,
+      });
+    }
 
     return html`
       <ha-card>
@@ -412,7 +431,7 @@ export class BetterWeatherCard extends LitElement {
 
       .card-content.compact {
         gap: 0;
-        padding: 12px 16px;
+        padding: 12px 16px 10px 16px;
       }
 
       /* Compact Mode Styles */
