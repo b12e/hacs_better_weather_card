@@ -100,34 +100,68 @@ export class BetterWeatherCard extends LitElement {
         return;
       }
 
-      // For HA 2023.9+, use the weather.get_forecasts service with return_response
+      // For HA 2023.9+, use the weather.get_forecasts action with response data
+      // Format according to HA documentation
       try {
-        const response: any = await this.hass.callService(
-          'weather',
-          'get_forecasts',
-          {
+        const result = await this.hass.callWS<Record<string, { forecast: ForecastItem[] }>>({
+          type: 'execute_script',
+          sequence: [
+            {
+              action: 'weather.get_forecasts',
+              data: {
+                type: forecastType,
+              },
+              target: {
+                entity_id: this.config.entity,
+              },
+              response_variable: 'forecast_data',
+            },
+          ],
+        });
+
+        console.log('Forecast WS result:', result);
+
+        // Extract forecast from response_variable
+        if (result) {
+          const forecasts = (result as any).forecast_data;
+          if (forecasts && forecasts[this.config.entity]?.forecast) {
+            this._forecast = forecasts[this.config.entity].forecast;
+            this.requestUpdate();
+            return;
+          }
+        }
+      } catch (wsError: any) {
+        console.debug('WS forecast failed, trying direct service call:', wsError?.message);
+      }
+
+      // Try direct service call approach
+      try {
+        // Some integrations return the data directly from the service
+        const serviceData = await this.hass.callWS({
+          type: 'call_service',
+          domain: 'weather',
+          service: 'get_forecasts',
+          service_data: {
             type: forecastType,
           },
-          {
+          target: {
             entity_id: this.config.entity,
-            return_response: true,
-          }
-        );
+          },
+          return_response: true,
+        });
 
-        console.log('Forecast response:', response);
+        console.log('Service call result:', serviceData);
 
-        // Response format for return_response: { "weather.entity": { "forecast": [...] } }
-        if (response && typeof response === 'object') {
-          const entityData = response[this.config.entity];
-          if (entityData?.forecast && Array.isArray(entityData.forecast)) {
-            this._forecast = entityData.forecast;
+        if (serviceData && typeof serviceData === 'object') {
+          const entityForecast = (serviceData as any)[this.config.entity];
+          if (entityForecast?.forecast && Array.isArray(entityForecast.forecast)) {
+            this._forecast = entityForecast.forecast;
             this.requestUpdate();
             return;
           }
         }
       } catch (serviceError: any) {
-        console.debug('weather.get_forecasts service error:', serviceError?.message || serviceError);
-        // Service might not be available, continue to fallbacks
+        console.debug('Service call failed:', serviceError?.message);
       }
 
       // Fallback: Check for separate hourly/daily forecast attributes
@@ -362,7 +396,8 @@ export class BetterWeatherCard extends LitElement {
       }
 
       ha-card:has(.compact) {
-        padding: 8px 12px;
+        padding: 0;
+        height: auto;
       }
 
       ha-card:not(:has(.compact)) {
@@ -376,7 +411,8 @@ export class BetterWeatherCard extends LitElement {
       }
 
       .card-content.compact {
-        gap: 8px;
+        gap: 0;
+        padding: 12px;
       }
 
       /* Compact Mode Styles */
@@ -384,6 +420,7 @@ export class BetterWeatherCard extends LitElement {
         display: flex;
         flex-direction: column;
         gap: 0;
+        margin-bottom: 10px;
       }
 
       .compact-main {
