@@ -222,8 +222,9 @@ const ct=t=>(e,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(t,e)}
       }
 
       .forecast-day-card {
-        flex: 0 0 auto;
+        flex: 1 1 85px;
         min-width: 85px;
+        max-width: 150px;
         padding: 0;
         background: var(--ha-card-background, var(--card-background-color, #fff));
       }
