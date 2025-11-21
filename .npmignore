@@ -1,0 +1,10 @@
+src/
+node_modules/
+.git/
+.github/
+*.log
+*.md
+!README.md
+tsconfig.json
+rollup.config.mjs
+.eslintrc.json
