@@ -119,8 +119,6 @@ export class BetterWeatherCard extends LitElement {
           ],
         });
 
-        console.log('Forecast WS result:', result);
-
         // Extract forecast from response_variable
         if (result) {
           const forecasts = (result as any).forecast_data;
@@ -131,7 +129,7 @@ export class BetterWeatherCard extends LitElement {
           }
         }
       } catch (wsError: any) {
-        console.debug('WS forecast failed, trying direct service call:', wsError?.message);
+        // WS method failed, try direct service call
       }
 
       // Try direct service call approach
@@ -150,18 +148,22 @@ export class BetterWeatherCard extends LitElement {
           return_response: true,
         });
 
-        console.log('Service call result:', serviceData);
-
         if (serviceData && typeof serviceData === 'object') {
-          const entityForecast = (serviceData as any)[this.config.entity];
-          if (entityForecast?.forecast && Array.isArray(entityForecast.forecast)) {
-            this._forecast = entityForecast.forecast;
+          const data = serviceData as any;
+
+          // Check multiple possible response formats
+          // Format 1: response["weather.entity"].forecast
+          const entityForecast = data.response?.[this.config.entity]?.forecast ||
+                                 data[this.config.entity]?.forecast;
+
+          if (entityForecast && Array.isArray(entityForecast)) {
+            this._forecast = entityForecast;
             this.requestUpdate();
             return;
           }
         }
       } catch (serviceError: any) {
-        console.debug('Service call failed:', serviceError?.message);
+        // Service call failed, try fallback methods
       }
 
       // Fallback: Check for separate hourly/daily forecast attributes
@@ -176,11 +178,9 @@ export class BetterWeatherCard extends LitElement {
       }
 
       // No forecast available
-      console.warn('No forecast data available for', this.config.entity);
       this._forecast = [];
       this.requestUpdate();
     } catch (error) {
-      console.error('Error fetching forecast:', error);
       this._forecast = [];
       this.requestUpdate();
     }
@@ -412,7 +412,7 @@ export class BetterWeatherCard extends LitElement {
 
       .card-content.compact {
         gap: 0;
-        padding: 12px;
+        padding: 12px 16px;
       }
 
       /* Compact Mode Styles */
@@ -420,7 +420,7 @@ export class BetterWeatherCard extends LitElement {
         display: flex;
         flex-direction: column;
         gap: 0;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
       }
 
       .compact-main {
@@ -590,8 +590,8 @@ export class BetterWeatherCard extends LitElement {
       }
 
       .card-content.compact .forecast-day {
-        padding: 6px 4px;
-        gap: 4px;
+        padding: 4px 2px;
+        gap: 2px;
         border-radius: 6px;
       }
 
