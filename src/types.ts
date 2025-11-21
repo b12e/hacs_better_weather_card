@@ -6,8 +6,9 @@ export interface BetterWeatherCardConfig extends LovelaceCardConfig {
   name?: string;
   show_current?: boolean;
   show_forecast?: boolean;
-  forecast_days?: number;
+  forecast_items?: number;
   forecast_type?: 'hourly' | 'daily';
+  show_forecast_humidity?: boolean;
   colored_icons?: boolean;
   tap_action?: ActionConfig;
   hold_action?: ActionConfig;
@@ -38,4 +39,5 @@ export interface ForecastItem {
   templow?: number;
   precipitation?: number;
   precipitation_probability?: number;
+  humidity?: number;
 }

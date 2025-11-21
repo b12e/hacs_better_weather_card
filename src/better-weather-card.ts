@@ -32,9 +32,10 @@ export class BetterWeatherCard extends LitElement {
       entity: '',
       show_current: true,
       show_forecast: true,
-      forecast_days: 0,
+      forecast_items: 0,
       forecast_type: 'daily',
       colored_icons: true,
+      show_forecast_humidity: true,
     };
   }
 
@@ -60,9 +61,10 @@ export class BetterWeatherCard extends LitElement {
     this.config = {
       show_current: true,
       show_forecast: true,
-      forecast_days: 0,
+      forecast_items: 0,
       forecast_type: 'daily',
       colored_icons: true,
+      show_forecast_humidity: true,
       ...config,
     };
 
@@ -296,7 +298,7 @@ export class BetterWeatherCard extends LitElement {
       `;
     }
 
-    const forecastLimit = this.config.forecast_days || 0;
+    const forecastLimit = this.config.forecast_items || 0;
     const forecast = forecastLimit > 0 ? this._forecast.slice(0, forecastLimit) : this._forecast;
 
     return html`
@@ -373,6 +375,14 @@ export class BetterWeatherCard extends LitElement {
                   <div class="temperature">${this.formatTemperature(day.temperature)}</div>
                   ${day.templow !== undefined
                     ? html`<div class="temp-low">${this.formatTemperature(day.templow)}</div>`
+                    : ''}
+                  ${this.config.show_forecast_humidity && day.humidity !== undefined
+                    ? html`
+                        <div class="forecast-humidity">
+                          <ha-icon icon="mdi:water-percent"></ha-icon>
+                          <span>${day.humidity}%</span>
+                        </div>
+                      `
                     : ''}
                 </div>
               </ha-card>
@@ -529,7 +539,7 @@ export class BetterWeatherCard extends LitElement {
 
       .forecast-day-card {
         flex: 0 0 auto;
-        min-width: 70px;
+        min-width: 85px;
         padding: 0;
         background: var(--ha-card-background, var(--card-background-color, #fff));
       }
@@ -539,7 +549,7 @@ export class BetterWeatherCard extends LitElement {
         flex-direction: column;
         align-items: center;
         gap: 4px;
-        padding: 8px 4px;
+        padding: 8px 6px;
         text-align: center;
       }
 
@@ -566,6 +576,19 @@ export class BetterWeatherCard extends LitElement {
         color: var(--secondary-text-color);
         opacity: 0.6;
         font-weight: 400;
+      }
+
+      .forecast-humidity {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        font-size: 11px;
+        color: var(--secondary-text-color);
+        margin-top: 2px;
+      }
+
+      .forecast-humidity ha-icon {
+        --mdc-icon-size: 12px;
       }
 
       .warning {

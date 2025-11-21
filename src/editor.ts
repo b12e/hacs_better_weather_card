@@ -23,7 +23,7 @@ export class BetterWeatherCardEditor extends LitElement implements LovelaceCardE
     const target = ev.target as any;
     let value: any;
 
-    if (target.checked !== undefined) {
+    if (target.type === 'checkbox') {
       value = target.checked;
     } else if (target.type === 'number') {
       const numValue = parseInt(target.value, 10);
@@ -142,14 +142,14 @@ export class BetterWeatherCardEditor extends LitElement implements LovelaceCardE
         </div>
 
         <div class="option">
-          <label for="forecast-days">Number of forecast ${this.config.forecast_type === 'hourly' ? 'hours' : 'days'}</label>
+          <label for="forecast-items">Number of forecast ${this.config.forecast_type === 'hourly' ? 'hours' : 'days'}</label>
           <input
-            id="forecast-days"
+            id="forecast-items"
             type="number"
             min="0"
             max="48"
-            .value=${this.config.forecast_days || 0}
-            .configValue=${'forecast_days'}
+            .value=${this.config.forecast_items || 0}
+            .configValue=${'forecast_items'}
             @input=${this.valueChanged}
             placeholder="0 = all"
           />
@@ -165,6 +165,18 @@ export class BetterWeatherCardEditor extends LitElement implements LovelaceCardE
               @change=${this.valueChanged}
             />
             Colored weather icons
+          </label>
+        </div>
+
+        <div class="option">
+          <label>
+            <input
+              type="checkbox"
+              .checked=${this.config.show_forecast_humidity !== false}
+              .configValue=${'show_forecast_humidity'}
+              @change=${this.valueChanged}
+            />
+            Show humidity in forecast
           </label>
         </div>
 
