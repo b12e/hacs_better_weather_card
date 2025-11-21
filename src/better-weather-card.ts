@@ -525,7 +525,7 @@ export class BetterWeatherCard extends LitElement {
 
       .forecast-container {
         display: flex;
-        gap: 8px;
+        gap: 0;
         overflow-x: auto;
         overflow-y: hidden;
         -webkit-overflow-scrolling: touch;
@@ -538,11 +538,16 @@ export class BetterWeatherCard extends LitElement {
       }
 
       .forecast-day-card {
-        flex: 1 1 85px;
+        flex: 1 1 0;
         min-width: 85px;
         max-width: 150px;
         padding: 0;
         background: var(--ha-card-background, var(--card-background-color, #fff));
+        border-right: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+      }
+
+      .forecast-day-card:last-child {
+        border-right: none;
       }
 
       .forecast-day {
