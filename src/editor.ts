@@ -119,6 +119,19 @@ export class BetterWeatherCardEditor extends LitElement implements LovelaceCardE
             @input=${this.valueChanged}
           />
         </div>
+
+        <div class="option">
+          <label for="layout">Layout</label>
+          <select
+            id="layout"
+            .value=${this.config.layout || 'compact'}
+            .configValue=${'layout'}
+            @change=${this.valueChanged}
+          >
+            <option value="compact">Compact (Mushroom style)</option>
+            <option value="default">Default</option>
+          </select>
+        </div>
       </div>
     `;
   }

@@ -33,6 +33,7 @@ export class BetterWeatherCard extends LitElement {
       show_current: true,
       show_forecast: true,
       forecast_days: 5,
+      layout: 'compact',
     };
   }
 
@@ -49,8 +50,35 @@ export class BetterWeatherCard extends LitElement {
       show_current: true,
       show_forecast: true,
       forecast_days: 5,
+      layout: 'compact',
       ...config,
     };
+  }
+
+  private async _fetchForecast(): Promise<ForecastItem[]> {
+    if (!this.hass || !this.config.entity) {
+      return [];
+    }
+
+    try {
+      // Try to get forecast from attributes first (old method)
+      const weather = this.weatherEntity;
+      if (weather?.attributes?.forecast) {
+        return weather.attributes.forecast;
+      }
+
+      // Try the new weather.get_forecasts service
+      const response = await this.hass.callWS<any>({
+        type: 'weather/subscribe_forecast',
+        forecast_type: 'daily',
+        entity_id: this.config.entity,
+      });
+
+      return response?.forecast || [];
+    } catch (error) {
+      console.error('Error fetching forecast:', error);
+      return [];
+    }
   }
 
   private get weatherEntity(): WeatherEntityState | undefined {
@@ -108,15 +136,56 @@ export class BetterWeatherCard extends LitElement {
       `;
     }
 
-    const forecast = weather.attributes.forecast?.slice(0, this.config.forecast_days || 5) || [];
+    const isCompact = this.config.layout === 'compact';
 
     return html`
       <ha-card>
-        <div class="card-content">
-          ${this.config.show_current ? this.renderCurrent(weather) : ''}
-          ${this.config.show_forecast ? this.renderForecast(forecast) : ''}
+        <div class="card-content ${isCompact ? 'compact' : ''}">
+          ${this.config.show_current
+            ? isCompact
+              ? this.renderCompactCurrent(weather)
+              : this.renderCurrent(weather)
+            : ''}
+          ${this.config.show_forecast ? this.renderForecastAsync() : ''}
         </div>
       </ha-card>
+    `;
+  }
+
+  private renderForecastAsync(): TemplateResult {
+    this._fetchForecast().then((forecast) => {
+      this._forecast = forecast.slice(0, this.config.forecast_days || 5);
+      this.requestUpdate();
+    });
+
+    return this.renderForecast(this._forecast || []);
+  }
+
+  @state() private _forecast: ForecastItem[] = [];
+
+  private renderCompactCurrent(weather: WeatherEntityState): TemplateResult {
+    const name = this.config.name || weather.attributes.friendly_name || 'Weather';
+    const condition = weather.state;
+    const temperature = weather.attributes.temperature;
+    const humidity = weather.attributes.humidity;
+
+    return html`
+      <div class="compact-weather">
+        <div class="compact-main">
+          <div class="icon-container">
+            <ha-icon .icon=${this.getWeatherIcon(condition)}></ha-icon>
+          </div>
+          <div class="compact-info">
+            <div class="name">${name}</div>
+            <div class="condition">${this.getConditionText(condition)}</div>
+          </div>
+          <div class="compact-temp">${this.formatTemperature(temperature)}</div>
+          <div class="compact-humidity">
+            <ha-icon icon="mdi:water-percent"></ha-icon>
+            <span>${humidity}%</span>
+          </div>
+        </div>
+      </div>
     `;
   }
 
@@ -218,6 +287,86 @@ export class BetterWeatherCard extends LitElement {
         gap: var(--spacing);
       }
 
+      .card-content.compact {
+        gap: 8px;
+      }
+
+      /* Compact Mode Styles */
+      .compact-weather {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .compact-main {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0;
+      }
+
+      .compact-main .icon-container {
+        width: 40px;
+        height: 40px;
+        background: var(--primary-color);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .compact-main .icon-container ha-icon {
+        --mdc-icon-size: 24px;
+        color: white;
+      }
+
+      .compact-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+
+      .compact-info .name {
+        font-weight: 500;
+        font-size: 14px;
+        color: var(--primary-text-color);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .compact-info .condition {
+        font-size: 12px;
+        color: var(--secondary-text-color);
+        opacity: 0.7;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .compact-temp {
+        font-size: 24px;
+        font-weight: 300;
+        color: var(--primary-text-color);
+        margin-right: 8px;
+      }
+
+      .compact-humidity {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 14px;
+        color: var(--secondary-text-color);
+      }
+
+      .compact-humidity ha-icon {
+        --mdc-icon-size: 16px;
+      }
+
+      /* Default Mode Styles */
       .current-weather {
         display: flex;
         flex-direction: column;
