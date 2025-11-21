@@ -17,7 +17,7 @@ interface ActionHandlerElement extends HTMLElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'action-handler': ActionHandlerElement;
+    'better-weather-action-handler': ActionHandlerElement;
   }
 }
 
@@ -163,18 +163,23 @@ class ActionHandler extends HTMLElement implements ActionHandlerElement {
   }
 }
 
-customElements.define('action-handler', ActionHandler);
+const CUSTOM_TYPE_PREFIX = 'better-weather';
+
+if (!customElements.get(`${CUSTOM_TYPE_PREFIX}-action-handler`)) {
+  customElements.define(`${CUSTOM_TYPE_PREFIX}-action-handler`, ActionHandler);
+}
 
 const getActionHandler = (): ActionHandlerElement => {
   const body = document.body;
-  if (body.querySelector('action-handler')) {
-    return body.querySelector('action-handler') as ActionHandlerElement;
+  const existingHandler = body.querySelector(`${CUSTOM_TYPE_PREFIX}-action-handler`);
+  if (existingHandler) {
+    return existingHandler as ActionHandlerElement;
   }
 
-  const actionhandler = document.createElement('action-handler');
+  const actionhandler = document.createElement(`${CUSTOM_TYPE_PREFIX}-action-handler`) as ActionHandlerElement;
   body.appendChild(actionhandler);
 
-  return actionhandler as ActionHandlerElement;
+  return actionhandler;
 };
 
 function fireEvent(
