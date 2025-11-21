@@ -44,9 +44,19 @@ export class BetterWeatherCard extends LitElement {
 
   public connectedCallback(): void {
     super.connectedCallback();
+    this._fetchForecast();
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this._forecastSubscription) {
+      this._forecastSubscription();
+      this._forecastSubscription = undefined;
+    }
   }
 
   public setConfig(config: BetterWeatherCardConfig): void {
+    const oldConfig = this.config;
     this.config = {
       show_current: true,
       show_forecast: true,
@@ -55,11 +65,28 @@ export class BetterWeatherCard extends LitElement {
       layout: 'compact',
       ...config,
     };
+
+    // Refetch forecast if entity or type changed
+    if (oldConfig && (
+      oldConfig.entity !== this.config.entity ||
+      oldConfig.forecast_type !== this.config.forecast_type
+    )) {
+      this._forecast = [];
+      if (this._forecastSubscription) {
+        this._forecastSubscription();
+        this._forecastSubscription = undefined;
+      }
+      if (this.hass) {
+        this._fetchForecast();
+      }
+    }
   }
 
-  private async _fetchForecast(): Promise<ForecastItem[]> {
+  private _forecastSubscription?: () => void;
+
+  private async _fetchForecast(): Promise<void> {
     if (!this.hass || !this.config.entity) {
-      return [];
+      return;
     }
 
     const forecastType = this.config.forecast_type || 'daily';
@@ -68,10 +95,12 @@ export class BetterWeatherCard extends LitElement {
       // Try to get forecast from attributes first (old method)
       const weather = this.weatherEntity;
       if (weather?.attributes?.forecast) {
-        return weather.attributes.forecast;
+        this._forecast = weather.attributes.forecast;
+        this.requestUpdate();
+        return;
       }
 
-      // Try the new weather.get_forecasts service
+      // Try the new weather.get_forecasts service (one-time call, not subscription)
       const response = await this.hass.callWS<any>({
         type: 'weather/get_forecasts',
         entity_id: [this.config.entity],
@@ -80,10 +109,22 @@ export class BetterWeatherCard extends LitElement {
 
       // Response format: { "weather.entity": { forecast: [...] } }
       const entityData = response?.[this.config.entity];
-      return entityData?.forecast || [];
+      if (entityData?.forecast) {
+        this._forecast = entityData.forecast;
+        this.requestUpdate();
+      }
     } catch (error) {
       console.error('Error fetching forecast:', error);
-      return [];
+      this._forecast = [];
+    }
+  }
+
+  protected updated(changedProps: Map<string, any>): void {
+    super.updated(changedProps);
+
+    // Fetch forecast when hass becomes available
+    if (changedProps.has('hass') && this.hass && !this._forecast.length && this.config?.show_forecast) {
+      this._fetchForecast();
     }
   }
 
@@ -152,6 +193,8 @@ export class BetterWeatherCard extends LitElement {
 
     const isCompact = this.config.layout === 'compact';
 
+    const forecast = this._forecast.slice(0, this.config.forecast_days || 5);
+
     return html`
       <ha-card>
         <div class="card-content ${isCompact ? 'compact' : ''}">
@@ -160,19 +203,10 @@ export class BetterWeatherCard extends LitElement {
               ? this.renderCompactCurrent(weather)
               : this.renderCurrent(weather)
             : ''}
-          ${this.config.show_forecast ? this.renderForecastAsync() : ''}
+          ${this.config.show_forecast ? this.renderForecast(forecast) : ''}
         </div>
       </ha-card>
     `;
-  }
-
-  private renderForecastAsync(): TemplateResult {
-    this._fetchForecast().then((forecast) => {
-      this._forecast = forecast.slice(0, this.config.forecast_days || 5);
-      this.requestUpdate();
-    });
-
-    return this.renderForecast(this._forecast || []);
   }
 
   @state() private _forecast: ForecastItem[] = [];
