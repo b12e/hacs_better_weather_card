@@ -43,6 +43,26 @@ export class BetterWeatherCardEditor extends LitElement implements LovelaceCardE
     fireEvent(this, 'config-changed', { config: newConfig });
   }
 
+  private actionChanged(ev: CustomEvent): void {
+    const target = ev.target as any;
+    const actionType = target.configValue as 'tap_action' | 'hold_action' | 'double_tap_action';
+    const actionValue = target.value;
+
+    if (actionValue === 'none') {
+      const newConfig = {
+        ...this.config,
+        [actionType]: { action: 'none' },
+      };
+      fireEvent(this, 'config-changed', { config: newConfig });
+    } else {
+      const newConfig = {
+        ...this.config,
+        [actionType]: { action: actionValue },
+      };
+      fireEvent(this, 'config-changed', { config: newConfig });
+    }
+  }
+
   protected render(): TemplateResult {
     if (!this.hass || !this.config) {
       return html``;
@@ -121,6 +141,21 @@ export class BetterWeatherCardEditor extends LitElement implements LovelaceCardE
         </div>
 
         <div class="option">
+          <label for="forecast-days">Number of forecast ${this.config.forecast_type === 'hourly' ? 'hours' : 'days'}</label>
+          <input
+            id="forecast-days"
+            type="number"
+            min="0"
+            max="48"
+            .value=${this.config.forecast_days || 0}
+            .configValue=${'forecast_days'}
+            @input=${this.valueChanged}
+            placeholder="0 = all"
+          />
+          <span style="font-size: 12px; color: var(--secondary-text-color);">0 = show all available</span>
+        </div>
+
+        <div class="option">
           <label>
             <input
               type="checkbox"
@@ -130,6 +165,57 @@ export class BetterWeatherCardEditor extends LitElement implements LovelaceCardE
             />
             Colored weather icons
           </label>
+        </div>
+
+        <div class="option">
+          <label for="tap-action">Tap action</label>
+          <select
+            id="tap-action"
+            .value=${this.config.tap_action?.action || 'more-info'}
+            .configValue=${'tap_action'}
+            @change=${this.actionChanged}
+          >
+            <option value="more-info">More info</option>
+            <option value="toggle">Toggle</option>
+            <option value="navigate">Navigate</option>
+            <option value="url">URL</option>
+            <option value="call-service">Call service</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+
+        <div class="option">
+          <label for="hold-action">Hold action</label>
+          <select
+            id="hold-action"
+            .value=${this.config.hold_action?.action || 'more-info'}
+            .configValue=${'hold_action'}
+            @change=${this.actionChanged}
+          >
+            <option value="more-info">More info</option>
+            <option value="toggle">Toggle</option>
+            <option value="navigate">Navigate</option>
+            <option value="url">URL</option>
+            <option value="call-service">Call service</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+
+        <div class="option">
+          <label for="double-tap-action">Double tap action</label>
+          <select
+            id="double-tap-action"
+            .value=${this.config.double_tap_action?.action || 'none'}
+            .configValue=${'double_tap_action'}
+            @change=${this.actionChanged}
+          >
+            <option value="more-info">More info</option>
+            <option value="toggle">Toggle</option>
+            <option value="navigate">Navigate</option>
+            <option value="url">URL</option>
+            <option value="call-service">Call service</option>
+            <option value="none">None</option>
+          </select>
         </div>
       </div>
     `;

@@ -1,8 +1,9 @@
 import { LitElement, html, TemplateResult, css, CSSResultGroup } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { HomeAssistant, LovelaceCardEditor, fireEvent } from 'custom-card-helpers';
+import { HomeAssistant, LovelaceCardEditor, ActionHandlerEvent, handleAction, hasAction } from 'custom-card-helpers';
 import { BetterWeatherCardConfig, WeatherEntityState, ForecastItem } from './types';
 import { CARD_VERSION, WEATHER_ICON_MAP } from './const';
+import { actionHandler } from './action-handler-directive';
 
 console.info(
   `%c  BETTER-WEATHER-CARD  \n%c  Version ${CARD_VERSION}  `,
@@ -32,7 +33,7 @@ export class BetterWeatherCard extends LitElement {
       entity: '',
       show_current: true,
       show_forecast: true,
-      forecast_days: 5,
+      forecast_days: 0,
       forecast_type: 'daily',
       colored_icons: true,
     };
@@ -60,7 +61,7 @@ export class BetterWeatherCard extends LitElement {
     this.config = {
       show_current: true,
       show_forecast: true,
-      forecast_days: 5,
+      forecast_days: 0,
       forecast_type: 'daily',
       colored_icons: true,
       ...config,
@@ -256,9 +257,9 @@ export class BetterWeatherCard extends LitElement {
     return date.toLocaleDateString(undefined, { weekday: 'short' });
   }
 
-  private handleAction(actionConfig: any): void {
-    if (actionConfig) {
-      fireEvent(this, 'hass-action' as any, { config: this.config, action: actionConfig });
+  private _handleAction(ev: ActionHandlerEvent): void {
+    if (this.hass && this.config && ev.detail.action) {
+      handleAction(this, this.hass, this.config, ev.detail.action);
     }
   }
 
@@ -284,15 +285,22 @@ export class BetterWeatherCard extends LitElement {
       `;
     }
 
-    const forecast = this._forecast.slice(0, this.config.forecast_days || 5);
+    const forecastLimit = this.config.forecast_days || 0;
+    const forecast = forecastLimit > 0 ? this._forecast.slice(0, forecastLimit) : this._forecast;
 
     return html`
-      <ha-card>
-        <div class="card-content compact">
-          ${this.config.show_current ? this.renderCompactCurrent(weather) : ''}
-          ${this.config.show_forecast ? this.renderForecast(forecast) : ''}
-        </div>
-      </ha-card>
+      <div class="weather-card-container">
+        ${this.config.show_current
+          ? html`
+              <ha-card>
+                <div class="card-content compact">
+                  ${this.renderCompactCurrent(weather)}
+                </div>
+              </ha-card>
+            `
+          : ''}
+        ${this.config.show_forecast ? this.renderForecast(forecast) : ''}
+      </div>
     `;
   }
 
@@ -306,7 +314,14 @@ export class BetterWeatherCard extends LitElement {
     const iconColor = this.getWeatherIconColor(condition);
 
     return html`
-      <div class="compact-weather">
+      <div
+        class="compact-weather"
+        @action=${this._handleAction}
+        .actionHandler=${actionHandler({
+          hasHold: hasAction(this.config.hold_action),
+          hasDoubleClick: hasAction(this.config.double_tap_action),
+        })}
+      >
         <div class="compact-main">
           <div class="icon-container" style="background: ${iconColor}">
             <ha-icon .icon=${this.getWeatherIcon(condition)}></ha-icon>
@@ -385,6 +400,12 @@ export class BetterWeatherCard extends LitElement {
         --icon-size: 40px;
       }
 
+      .weather-card-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
       ha-card {
         background: var(--ha-card-background, var(--card-background-color, #fff));
         border-radius: var(--ha-card-border-radius, var(--border-radius));
@@ -394,9 +415,6 @@ export class BetterWeatherCard extends LitElement {
           0px 1px 1px 0px rgba(0, 0, 0, 0.14),
           0px 1px 3px 0px rgba(0, 0, 0, 0.12)
         );
-      }
-
-      ha-card {
         padding: 0;
         height: auto;
       }
@@ -412,11 +430,7 @@ export class BetterWeatherCard extends LitElement {
         display: flex;
         flex-direction: column;
         gap: 0;
-      }
-
-      /* Add margin only when forecast is shown */
-      .compact-weather:not(:last-child) {
-        margin-bottom: 12px;
+        cursor: pointer;
       }
 
       .compact-main {
