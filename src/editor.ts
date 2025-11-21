@@ -26,7 +26,7 @@ export class BetterWeatherCardEditor extends LitElement implements LovelaceCardE
     if (target.checked !== undefined) {
       value = target.checked;
     } else if (target.type === 'number') {
-      value = target.value === '' ? 5 : parseInt(target.value, 10);
+      value = target.value === '' ? 0 : parseInt(target.value, 10);
     } else {
       value = target.value;
     }
