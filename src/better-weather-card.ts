@@ -92,7 +92,7 @@ export class BetterWeatherCard extends LitElement {
     const forecastType = this.config.forecast_type || 'daily';
 
     try {
-      // Try to get forecast from attributes first (old method)
+      // Try to get forecast from attributes first (old method, before 2023.9)
       const weather = this.weatherEntity;
       if (weather?.attributes?.forecast) {
         this._forecast = weather.attributes.forecast;
@@ -100,22 +100,55 @@ export class BetterWeatherCard extends LitElement {
         return;
       }
 
-      // Try the new weather.get_forecasts service (one-time call, not subscription)
-      const response = await this.hass.callWS<any>({
-        type: 'weather/get_forecasts',
-        entity_id: [this.config.entity],
-        forecast_type: forecastType,
-      });
+      // For HA 2023.9+, use the weather.get_forecasts service with return_response
+      try {
+        const response: any = await this.hass.callService(
+          'weather',
+          'get_forecasts',
+          {
+            type: forecastType,
+          },
+          {
+            entity_id: this.config.entity,
+            return_response: true,
+          }
+        );
 
-      // Response format: { "weather.entity": { forecast: [...] } }
-      const entityData = response?.[this.config.entity];
-      if (entityData?.forecast) {
-        this._forecast = entityData.forecast;
-        this.requestUpdate();
+        console.log('Forecast response:', response);
+
+        // Response format for return_response: { "weather.entity": { "forecast": [...] } }
+        if (response && typeof response === 'object') {
+          const entityData = response[this.config.entity];
+          if (entityData?.forecast && Array.isArray(entityData.forecast)) {
+            this._forecast = entityData.forecast;
+            this.requestUpdate();
+            return;
+          }
+        }
+      } catch (serviceError: any) {
+        console.debug('weather.get_forecasts service error:', serviceError?.message || serviceError);
+        // Service might not be available, continue to fallbacks
       }
+
+      // Fallback: Check for separate hourly/daily forecast attributes
+      if (weather?.attributes) {
+        const attrs = weather.attributes as any;
+        const forecastAttr = forecastType === 'hourly' ? attrs.forecast_hourly : attrs.forecast_daily;
+        if (forecastAttr && Array.isArray(forecastAttr)) {
+          this._forecast = forecastAttr;
+          this.requestUpdate();
+          return;
+        }
+      }
+
+      // No forecast available
+      console.warn('No forecast data available for', this.config.entity);
+      this._forecast = [];
+      this.requestUpdate();
     } catch (error) {
       console.error('Error fetching forecast:', error);
       this._forecast = [];
+      this.requestUpdate();
     }
   }
 
@@ -329,7 +362,7 @@ export class BetterWeatherCard extends LitElement {
       }
 
       ha-card:has(.compact) {
-        padding: 12px;
+        padding: 8px 12px;
       }
 
       ha-card:not(:has(.compact)) {
@@ -343,7 +376,7 @@ export class BetterWeatherCard extends LitElement {
       }
 
       .card-content.compact {
-        gap: 12px;
+        gap: 8px;
       }
 
       /* Compact Mode Styles */
@@ -500,43 +533,65 @@ export class BetterWeatherCard extends LitElement {
 
       .forecast {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
-        gap: 8px;
+        grid-template-columns: repeat(auto-fit, minmax(55px, 1fr));
+        gap: 6px;
+      }
+
+      .card-content.compact .forecast {
+        gap: 4px;
       }
 
       .forecast-day {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 8px;
-        padding: 12px 8px;
+        gap: 6px;
+        padding: 8px 4px;
         background: var(--secondary-background-color, #f5f5f5);
-        border-radius: var(--border-radius);
+        border-radius: 8px;
         text-align: center;
       }
 
+      .card-content.compact .forecast-day {
+        padding: 6px 4px;
+        gap: 4px;
+        border-radius: 6px;
+      }
+
       .day-name {
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 500;
         color: var(--secondary-text-color);
         text-transform: uppercase;
       }
 
       .forecast-day ha-icon {
-        --mdc-icon-size: 28px;
+        --mdc-icon-size: 24px;
         color: var(--primary-color);
       }
 
+      .card-content.compact .forecast-day ha-icon {
+        --mdc-icon-size: 20px;
+      }
+
       .forecast-day .temperature {
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 500;
         color: var(--primary-text-color);
       }
 
-      .temp-low {
+      .card-content.compact .forecast-day .temperature {
         font-size: 14px;
+      }
+
+      .temp-low {
+        font-size: 13px;
         color: var(--secondary-text-color);
         opacity: 0.7;
+      }
+
+      .card-content.compact .temp-low {
+        font-size: 11px;
       }
 
       .warning {
