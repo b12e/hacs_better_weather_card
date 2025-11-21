@@ -2,6 +2,8 @@
 
 A better weather card for Home Assistant with Mushroom-inspired design.
 
+<img width="431" height="247" alt="image" src="https://github.com/user-attachments/assets/f9af7401-0668-4efc-a24f-2e240554b29a" />
+
 ## Features
 
 - **Mushroom-style design** - Clean and modern interface matching the Mushroom card aesthetic
