@@ -1,9 +1,8 @@
 import { LitElement, html, TemplateResult, css, CSSResultGroup } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { HomeAssistant, LovelaceCardEditor, ActionHandlerEvent, handleAction, hasAction } from 'custom-card-helpers';
+import { HomeAssistant, LovelaceCardEditor, handleAction, hasAction } from 'custom-card-helpers';
 import { BetterWeatherCardConfig, WeatherEntityState, ForecastItem } from './types';
 import { CARD_VERSION, WEATHER_ICON_MAP } from './const';
-import { actionHandler } from './action-handler-directive';
 
 console.info(
   `%c  BETTER-WEATHER-CARD  \n%c  Version ${CARD_VERSION}  `,
@@ -257,9 +256,21 @@ export class BetterWeatherCard extends LitElement {
     return date.toLocaleDateString(undefined, { weekday: 'short' });
   }
 
-  private _handleAction(ev: ActionHandlerEvent): void {
-    if (this.hass && this.config && ev.detail.action) {
-      handleAction(this, this.hass, this.config, ev.detail.action);
+  private _handleTap(): void {
+    if (this.hass && this.config && hasAction(this.config.tap_action)) {
+      handleAction(this, this.hass, this.config, 'tap');
+    }
+  }
+
+  private _handleHold(): void {
+    if (this.hass && this.config && hasAction(this.config.hold_action)) {
+      handleAction(this, this.hass, this.config, 'hold');
+    }
+  }
+
+  private _handleDoubleClick(): void {
+    if (this.hass && this.config && hasAction(this.config.double_tap_action)) {
+      handleAction(this, this.hass, this.config, 'double_tap');
     }
   }
 
@@ -316,11 +327,12 @@ export class BetterWeatherCard extends LitElement {
     return html`
       <div
         class="compact-weather"
-        @action=${this._handleAction}
-        .actionHandler=${actionHandler({
-          hasHold: hasAction(this.config.hold_action),
-          hasDoubleClick: hasAction(this.config.double_tap_action),
-        })}
+        @click=${this._handleTap}
+        @dblclick=${this._handleDoubleClick}
+        @contextmenu=${(e: Event) => {
+          e.preventDefault();
+          this._handleHold();
+        }}
       >
         <div class="compact-main">
           <div class="icon-container" style="background: ${iconColor}">
