@@ -33,6 +33,7 @@ export class BetterWeatherCard extends LitElement {
       show_current: true,
       show_forecast: true,
       forecast_days: 5,
+      forecast_type: 'daily',
       layout: 'compact',
     };
   }
@@ -50,6 +51,7 @@ export class BetterWeatherCard extends LitElement {
       show_current: true,
       show_forecast: true,
       forecast_days: 5,
+      forecast_type: 'daily',
       layout: 'compact',
       ...config,
     };
@@ -60,6 +62,8 @@ export class BetterWeatherCard extends LitElement {
       return [];
     }
 
+    const forecastType = this.config.forecast_type || 'daily';
+
     try {
       // Try to get forecast from attributes first (old method)
       const weather = this.weatherEntity;
@@ -69,12 +73,14 @@ export class BetterWeatherCard extends LitElement {
 
       // Try the new weather.get_forecasts service
       const response = await this.hass.callWS<any>({
-        type: 'weather/subscribe_forecast',
-        forecast_type: 'daily',
-        entity_id: this.config.entity,
+        type: 'weather/get_forecasts',
+        entity_id: [this.config.entity],
+        forecast_type: forecastType,
       });
 
-      return response?.forecast || [];
+      // Response format: { "weather.entity": { forecast: [...] } }
+      const entityData = response?.[this.config.entity];
+      return entityData?.forecast || [];
     } catch (error) {
       console.error('Error fetching forecast:', error);
       return [];
@@ -99,6 +105,14 @@ export class BetterWeatherCard extends LitElement {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    const isHourly = this.config.forecast_type === 'hourly';
+
+    if (isHourly) {
+      // For hourly forecast, show time
+      return date.toLocaleTimeString(undefined, { hour: 'numeric', hour12: true });
+    }
+
+    // For daily forecast
     if (date.toDateString() === today.toDateString()) {
       return 'Today';
     }
@@ -278,6 +292,13 @@ export class BetterWeatherCard extends LitElement {
           0px 1px 1px 0px rgba(0, 0, 0, 0.14),
           0px 1px 3px 0px rgba(0, 0, 0, 0.12)
         );
+      }
+
+      ha-card:has(.compact) {
+        padding: 12px;
+      }
+
+      ha-card:not(:has(.compact)) {
         padding: var(--spacing);
       }
 
@@ -288,20 +309,20 @@ export class BetterWeatherCard extends LitElement {
       }
 
       .card-content.compact {
-        gap: 8px;
+        gap: 12px;
       }
 
       /* Compact Mode Styles */
       .compact-weather {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 0;
       }
 
       .compact-main {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 16px;
         padding: 0;
       }
 
