@@ -34,6 +34,7 @@ export class BetterWeatherCard extends LitElement {
       show_forecast: true,
       forecast_days: 5,
       forecast_type: 'daily',
+      colored_icons: true,
     };
   }
 
@@ -61,6 +62,7 @@ export class BetterWeatherCard extends LitElement {
       show_forecast: true,
       forecast_days: 5,
       forecast_type: 'daily',
+      colored_icons: true,
       ...config,
     };
 
@@ -201,6 +203,32 @@ export class BetterWeatherCard extends LitElement {
     return WEATHER_ICON_MAP[condition] || 'mdi:weather-cloudy';
   }
 
+  private getWeatherIconColor(condition: string): string {
+    if (!this.config.colored_icons) {
+      return 'var(--primary-color)';
+    }
+
+    const colorMap: Record<string, string> = {
+      'clear-night': '#4A90E2',
+      'cloudy': '#95A5A6',
+      'fog': '#BDC3C7',
+      'hail': '#E8F4F8',
+      'lightning': '#F39C12',
+      'lightning-rainy': '#3498DB',
+      'partlycloudy': '#7F8C8D',
+      'pouring': '#2980B9',
+      'rainy': '#3498DB',
+      'snowy': '#ECF0F1',
+      'snowy-rainy': '#5DADE2',
+      'sunny': '#F39C12',
+      'windy': '#95A5A6',
+      'windy-variant': '#95A5A6',
+      'exceptional': '#E74C3C',
+    };
+
+    return colorMap[condition] || 'var(--primary-color)';
+  }
+
   private formatTemperature(temperature: number): string {
     return `${Math.round(temperature)}°`;
   }
@@ -275,11 +303,12 @@ export class BetterWeatherCard extends LitElement {
     const condition = weather.state;
     const temperature = weather.attributes.temperature;
     const humidity = weather.attributes.humidity;
+    const iconColor = this.getWeatherIconColor(condition);
 
     return html`
       <div class="compact-weather">
         <div class="compact-main">
-          <div class="icon-container">
+          <div class="icon-container" style="background: ${iconColor}">
             <ha-icon .icon=${this.getWeatherIcon(condition)}></ha-icon>
           </div>
           <div class="compact-info">
@@ -302,18 +331,26 @@ export class BetterWeatherCard extends LitElement {
     }
 
     return html`
-      <div class="forecast">
+      <div class="forecast-container">
         ${forecast.map(
-          (day) => html`
-            <div class="forecast-day">
-              <div class="day-name">${this.formatDay(day.datetime)}</div>
-              <ha-icon .icon=${this.getWeatherIcon(day.condition)}></ha-icon>
-              <div class="temperature">${this.formatTemperature(day.temperature)}</div>
-              ${day.templow !== undefined
-                ? html`<div class="temp-low">${this.formatTemperature(day.templow)}</div>`
-                : ''}
-            </div>
-          `
+          (day) => {
+            const iconColor = this.getWeatherIconColor(day.condition);
+            return html`
+              <ha-card class="forecast-day-card">
+                <div class="forecast-day">
+                  <div class="day-name">${this.formatDay(day.datetime)}</div>
+                  <ha-icon
+                    .icon=${this.getWeatherIcon(day.condition)}
+                    style="color: ${iconColor}"
+                  ></ha-icon>
+                  <div class="temperature">${this.formatTemperature(day.temperature)}</div>
+                  ${day.templow !== undefined
+                    ? html`<div class="temp-low">${this.formatTemperature(day.templow)}</div>`
+                    : ''}
+                </div>
+              </ha-card>
+            `;
+          }
         )}
       </div>
     `;
@@ -392,12 +429,12 @@ export class BetterWeatherCard extends LitElement {
       .compact-main .icon-container {
         width: 40px;
         height: 40px;
-        background: var(--primary-color);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        transition: background 0.3s ease;
       }
 
       .compact-main .icon-container ha-icon {
@@ -450,10 +487,25 @@ export class BetterWeatherCard extends LitElement {
         --mdc-icon-size: 16px;
       }
 
-      .forecast {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+      .forecast-container {
+        display: flex;
         gap: 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
+      }
+
+      .forecast-container::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
+      }
+
+      .forecast-day-card {
+        flex: 0 0 auto;
+        min-width: 70px;
+        padding: 0;
+        background: var(--ha-card-background, var(--card-background-color, #fff));
       }
 
       .forecast-day {
@@ -462,10 +514,7 @@ export class BetterWeatherCard extends LitElement {
         align-items: center;
         gap: 4px;
         padding: 8px 4px;
-        background: var(--secondary-background-color, rgba(var(--rgb-primary-text-color, 0, 0, 0), 0.05));
-        border-radius: 12px;
         text-align: center;
-        transition: background 0.2s;
       }
 
       .day-name {
@@ -478,7 +527,6 @@ export class BetterWeatherCard extends LitElement {
 
       .forecast-day ha-icon {
         --mdc-icon-size: 24px;
-        color: var(--primary-color);
       }
 
       .forecast-day .temperature {

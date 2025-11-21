@@ -8,6 +8,7 @@ export interface BetterWeatherCardConfig extends LovelaceCardConfig {
   show_forecast?: boolean;
   forecast_days?: number;
   forecast_type?: 'hourly' | 'daily';
+  colored_icons?: boolean;
   tap_action?: ActionConfig;
   hold_action?: ActionConfig;
   double_tap_action?: ActionConfig;

@@ -119,6 +119,18 @@ export class BetterWeatherCardEditor extends LitElement implements LovelaceCardE
             <option value="hourly">Hourly</option>
           </select>
         </div>
+
+        <div class="option">
+          <label>
+            <input
+              type="checkbox"
+              .checked=${this.config.colored_icons !== false}
+              .configValue=${'colored_icons'}
+              @change=${this.valueChanged}
+            />
+            Colored weather icons
+          </label>
+        </div>
       </div>
     `;
   }
