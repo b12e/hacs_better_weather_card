@@ -119,32 +119,6 @@ export class BetterWeatherCardEditor extends LitElement implements LovelaceCardE
             <option value="hourly">Hourly</option>
           </select>
         </div>
-
-        <div class="option">
-          <label for="forecast-days">Forecast ${this.config.forecast_type === 'hourly' ? 'hours' : 'days'}</label>
-          <input
-            id="forecast-days"
-            type="number"
-            min="1"
-            max="48"
-            .value=${this.config.forecast_days || 5}
-            .configValue=${'forecast_days'}
-            @input=${this.valueChanged}
-          />
-        </div>
-
-        <div class="option">
-          <label for="layout">Layout</label>
-          <select
-            id="layout"
-            .value=${this.config.layout || 'compact'}
-            .configValue=${'layout'}
-            @change=${this.valueChanged}
-          >
-            <option value="compact">Compact (Mushroom style)</option>
-            <option value="default">Default</option>
-          </select>
-        </div>
       </div>
     `;
   }

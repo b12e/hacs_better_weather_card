@@ -34,7 +34,6 @@ export class BetterWeatherCard extends LitElement {
       show_forecast: true,
       forecast_days: 5,
       forecast_type: 'daily',
-      layout: 'compact',
     };
   }
 
@@ -62,7 +61,6 @@ export class BetterWeatherCard extends LitElement {
       show_forecast: true,
       forecast_days: 5,
       forecast_type: 'daily',
-      layout: 'compact',
       ...config,
     };
 
@@ -86,18 +84,15 @@ export class BetterWeatherCard extends LitElement {
 
   private async _fetchForecast(): Promise<void> {
     if (!this.hass || !this.config.entity) {
-      console.log('Forecast fetch skipped: no hass or entity');
       return;
     }
 
     const forecastType = this.config.forecast_type || 'daily';
-    console.log('Fetching forecast:', { entity: this.config.entity, type: forecastType });
 
     try {
       // Try to get forecast from attributes first (old method, before 2023.9)
       const weather = this.weatherEntity;
       if (weather?.attributes?.forecast) {
-        console.log('Found forecast in attributes');
         this._forecast = weather.attributes.forecast;
         this.requestUpdate();
         return;
@@ -126,14 +121,13 @@ export class BetterWeatherCard extends LitElement {
         if (result) {
           const forecasts = (result as any).forecast_data;
           if (forecasts && forecasts[this.config.entity]?.forecast) {
-            console.log('Found forecast via execute_script');
             this._forecast = forecasts[this.config.entity].forecast;
             this.requestUpdate();
             return;
           }
         }
       } catch (wsError: any) {
-        console.log('execute_script method failed');
+        // execute_script method failed
       }
 
       // Try direct service call approach
@@ -152,8 +146,6 @@ export class BetterWeatherCard extends LitElement {
           return_response: true,
         });
 
-        console.log('Service call response:', serviceData);
-
         if (serviceData && typeof serviceData === 'object') {
           const data = serviceData as any;
 
@@ -163,16 +155,13 @@ export class BetterWeatherCard extends LitElement {
                                  data[this.config.entity]?.forecast;
 
           if (entityForecast && Array.isArray(entityForecast)) {
-            console.log('Found forecast via service call, length:', entityForecast.length);
             this._forecast = entityForecast;
             this.requestUpdate();
             return;
-          } else {
-            console.log('No forecast found in service response');
           }
         }
       } catch (serviceError: any) {
-        console.log('Service call failed:', serviceError);
+        // Service call failed
       }
 
       // Fallback: Check for separate hourly/daily forecast attributes
@@ -267,28 +256,12 @@ export class BetterWeatherCard extends LitElement {
       `;
     }
 
-    const isCompact = this.config.layout === 'compact';
-
     const forecast = this._forecast.slice(0, this.config.forecast_days || 5);
-
-    // Debug logging
-    if (this.config.show_forecast && forecast.length === 0) {
-      console.log('Forecast debug:', {
-        configEntity: this.config.entity,
-        forecastLength: this._forecast.length,
-        forecastType: this.config.forecast_type,
-        showForecast: this.config.show_forecast,
-      });
-    }
 
     return html`
       <ha-card>
-        <div class="card-content ${isCompact ? 'compact' : ''}">
-          ${this.config.show_current
-            ? isCompact
-              ? this.renderCompactCurrent(weather)
-              : this.renderCurrent(weather)
-            : ''}
+        <div class="card-content compact">
+          ${this.config.show_current ? this.renderCompactCurrent(weather) : ''}
           ${this.config.show_forecast ? this.renderForecast(forecast) : ''}
         </div>
       </ha-card>
@@ -315,34 +288,6 @@ export class BetterWeatherCard extends LitElement {
           </div>
           <div class="compact-temp">${this.formatTemperature(temperature)}</div>
           <div class="compact-humidity">
-            <ha-icon icon="mdi:water-percent"></ha-icon>
-            <span>${humidity}%</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  private renderCurrent(weather: WeatherEntityState): TemplateResult {
-    const name = this.config.name || weather.attributes.friendly_name || 'Weather';
-    const condition = weather.state;
-    const temperature = weather.attributes.temperature;
-    const humidity = weather.attributes.humidity;
-
-    return html`
-      <div class="current-weather">
-        <div class="current-header">
-          <div class="icon-container">
-            <ha-icon .icon=${this.getWeatherIcon(condition)}></ha-icon>
-          </div>
-          <div class="current-info">
-            <div class="name">${name}</div>
-            <div class="condition">${this.getConditionText(condition)}</div>
-          </div>
-        </div>
-        <div class="current-details">
-          <div class="temperature">${this.formatTemperature(temperature)}</div>
-          <div class="humidity">
             <ha-icon icon="mdi:water-percent"></ha-icon>
             <span>${humidity}%</span>
           </div>
@@ -414,32 +359,27 @@ export class BetterWeatherCard extends LitElement {
         );
       }
 
-      ha-card:has(.compact) {
+      ha-card {
         padding: 0;
         height: auto;
-      }
-
-      ha-card:not(:has(.compact)) {
-        padding: var(--spacing);
       }
 
       .card-content {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing);
-      }
-
-      .card-content.compact {
         gap: 0;
-        padding: 12px 16px 10px 16px;
+        padding: 12px 16px;
       }
 
-      /* Compact Mode Styles */
       .compact-weather {
         display: flex;
         flex-direction: column;
         gap: 0;
-        margin-bottom: 8px;
+      }
+
+      /* Add margin only when forecast is shown */
+      .compact-weather:not(:last-child) {
+        margin-bottom: 12px;
       }
 
       .compact-main {
@@ -510,108 +450,22 @@ export class BetterWeatherCard extends LitElement {
         --mdc-icon-size: 16px;
       }
 
-      /* Default Mode Styles */
-      .current-weather {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing);
-        padding: var(--spacing);
-        background: var(--secondary-background-color, #f5f5f5);
-        border-radius: var(--border-radius);
-      }
-
-      .current-header {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing);
-      }
-
-      .icon-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: var(--icon-size);
-        height: var(--icon-size);
-        background: var(--primary-color);
-        border-radius: 50%;
-        color: var(--primary-text-color, #fff);
-        flex-shrink: 0;
-      }
-
-      .icon-container ha-icon {
-        --mdc-icon-size: 24px;
-      }
-
-      .current-info {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .name {
-        font-weight: 500;
-        font-size: 16px;
-        color: var(--primary-text-color);
-      }
-
-      .condition {
-        font-size: 14px;
-        color: var(--secondary-text-color);
-        opacity: 0.7;
-      }
-
-      .current-details {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding-top: 8px;
-        border-top: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
-      }
-
-      .temperature {
-        font-size: 32px;
-        font-weight: 300;
-        color: var(--primary-text-color);
-      }
-
-      .humidity {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 14px;
-        color: var(--secondary-text-color);
-      }
-
-      .humidity ha-icon {
-        --mdc-icon-size: 18px;
-      }
-
       .forecast {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(55px, 1fr));
-        gap: 6px;
-      }
-
-      .card-content.compact .forecast {
-        gap: 4px;
+        grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+        gap: 8px;
       }
 
       .forecast-day {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
         padding: 8px 4px;
-        background: var(--secondary-background-color, #f5f5f5);
-        border-radius: 8px;
+        background: var(--secondary-background-color, rgba(var(--rgb-primary-text-color, 0, 0, 0), 0.05));
+        border-radius: 12px;
         text-align: center;
-      }
-
-      .card-content.compact .forecast-day {
-        padding: 4px 2px;
-        gap: 2px;
-        border-radius: 6px;
+        transition: background 0.2s;
       }
 
       .day-name {
@@ -619,15 +473,12 @@ export class BetterWeatherCard extends LitElement {
         font-weight: 500;
         color: var(--secondary-text-color);
         text-transform: uppercase;
+        letter-spacing: 0.1px;
       }
 
       .forecast-day ha-icon {
         --mdc-icon-size: 24px;
         color: var(--primary-color);
-      }
-
-      .card-content.compact .forecast-day ha-icon {
-        --mdc-icon-size: 20px;
       }
 
       .forecast-day .temperature {
@@ -636,18 +487,11 @@ export class BetterWeatherCard extends LitElement {
         color: var(--primary-text-color);
       }
 
-      .card-content.compact .forecast-day .temperature {
-        font-size: 14px;
-      }
-
       .temp-low {
         font-size: 13px;
         color: var(--secondary-text-color);
-        opacity: 0.7;
-      }
-
-      .card-content.compact .temp-low {
-        font-size: 11px;
+        opacity: 0.6;
+        font-weight: 400;
       }
 
       .warning {
